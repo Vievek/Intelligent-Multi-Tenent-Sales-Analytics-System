@@ -7,11 +7,24 @@ const { dateParser } = require('../utils/dateParser');
 const logger = require('../utils/logger');
 
 async function pubsubProcessor(event) {
-  const { data, attributes } = event;
+  const message = event.data?.message;
+  const messageId = message?.messageId || event.attributes?.messageId || null;
+
+  let data = null;
+  if (message) {
+    try {
+      data = message.json || (message.data ? JSON.parse(Buffer.from(message.data, 'base64').toString()) : null);
+    } catch (err) {
+      logger.error('Failed to parse PubSub message payload:', err);
+    }
+  } else {
+    // Fallback for direct data object in unit tests
+    data = event.data;
+  }
   
   if (!data || !data.text) {
     logger.warn('Invalid message data', { data });
-    await updateMessageLog(attributes.messageId, 'failed', 'Invalid message data');
+    await updateMessageLog(messageId, 'failed', 'Invalid message data');
     return;
   }
 
@@ -36,7 +49,7 @@ async function pubsubProcessor(event) {
       confidence: extraction.confidence,
       extractionMethod: extraction.method,
       processedAt: new Date().toISOString(),
-      pubsubMessageId: attributes.messageId || null,
+      pubsubMessageId: messageId,
     };
 
     const validated = saleSchema.parse(saleData);
@@ -45,7 +58,7 @@ async function pubsubProcessor(event) {
 
     await agentRepository.incrementMessageCount(tenantId, agentId);
 
-    await updateMessageLog(attributes.messageId, 'processed', null, saleId);
+    await updateMessageLog(messageId, 'processed', null, saleId);
 
     logger.info('Message processed successfully', {
       telegramUserId,
@@ -56,7 +69,7 @@ async function pubsubProcessor(event) {
     });
   } catch (error) {
     logger.error('Processing error:', error);
-    await updateMessageLog(attributes.messageId, 'failed', error.message);
+    await updateMessageLog(messageId, 'failed', error.message);
     throw error;
   }
 }
