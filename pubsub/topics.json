@@ -1,0 +1,43 @@
+{
+  "topics": [
+    {
+      "name": "sales-messages",
+      "labels": {
+        "environment": "production",
+        "service": "rmet-sales-analytics"
+      },
+      "messageRetentionDuration": "86400s",
+      "schemaSettings": {
+        "schema": "projects/rmet-sales-analytics/schemas/sales-message",
+        "encoding": "JSON"
+      }
+    },
+    {
+      "name": "sales-messages-dlq",
+      "labels": {
+        "environment": "production",
+        "service": "rmet-sales-analytics",
+        "type": "dead-letter"
+      },
+      "messageRetentionDuration": "604800s"
+    }
+  ],
+  "subscriptions": [
+    {
+      "name": "sales-processor-sub",
+      "topic": "sales-messages",
+      "deadLetterPolicy": {
+        "deadLetterTopic": "sales-messages-dlq",
+        "maxDeliveryAttempts": 5
+      },
+      "retryPolicy": {
+        "minimumBackoff": "10s",
+        "maximumBackoff": "600s"
+      },
+      "ackDeadlineSeconds": 60,
+      "expirationPolicy": {
+        "ttl": "604800s"
+      }
+    }
+  ]
+}
