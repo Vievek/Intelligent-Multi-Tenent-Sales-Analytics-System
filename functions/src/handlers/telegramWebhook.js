@@ -66,14 +66,6 @@ async function handleRegistration(chatId, telegramUserId, text) {
 async function handleSalesMessage(chatId, telegramUserId, text, timestamp) {
   try {
     const resolution = await tenantResolver.resolveAgent(telegramUserId);
-    
-    if (!resolution.tenantId) {
-      await telegramService.sendMessage(
-        chatId,
-        '❌ You are not registered. Please use /register TENANT_CODE to register first.'
-      );
-      return;
-    }
 
     const messageData = {
       telegramUserId,
@@ -97,7 +89,19 @@ async function handleSalesMessage(chatId, telegramUserId, text, timestamp) {
     logger.info('Message queued', { telegramUserId, tenantId: resolution.tenantId, messageId });
   } catch (error) {
     logger.error('Error handling sales message:', error);
-    await telegramService.sendMessage(chatId, '❌ Failed to process your message. Please try again.');
+    if (error.message === 'UNREGISTERED_AGENT') {
+      await telegramService.sendMessage(
+        chatId,
+        '❌ You are not registered. Please use /register TENANT_CODE to register first.'
+      );
+    } else if (error.message === 'TENANT_INACTIVE') {
+      await telegramService.sendMessage(
+        chatId,
+        '❌ Your business account is inactive. Please contact your administrator.'
+      );
+    } else {
+      await telegramService.sendMessage(chatId, '❌ Failed to process your message. Please try again.');
+    }
   }
 }
 
