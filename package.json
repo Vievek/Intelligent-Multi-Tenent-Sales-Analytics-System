@@ -1,0 +1,23 @@
+{
+  "name": "rmet-sales-analytics",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install && npm --prefix functions install && npm --prefix frontend install",
+    "test:all": "npm --prefix functions test && npm --prefix frontend test",
+    "test:unit": "npm --prefix functions test:unit && npm --prefix frontend test",
+    "test:integration": "npm --prefix functions test:integration",
+    "test:e2e": "npm --prefix functions test:e2e",
+    "dev:functions": "npm --prefix functions serve",
+    "dev:frontend": "npm --prefix frontend dev",
+    "build:frontend": "npm --prefix frontend build",
+    "deploy": "firebase deploy",
+    "deploy:functions": "firebase deploy --only functions",
+    "deploy:hosting": "firebase deploy --only hosting",
+    "deploy:firestore": "firebase deploy --only firestore",
+    "diff": "echo \"check the git diff and verify it wont break anything first then check it an atomic change if that give me conventional commits else give me what are need to be staged as git add that files and its own separate conventional commit message\" > temp-prompt.txt && git add -N . && (type temp-prompt.txt && git diff) | clip && del temp-prompt.txt && echo \"Git diff with prompt copied to clipboard!\""
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
