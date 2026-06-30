@@ -51,4 +51,9 @@ describe('Preprocessor', () => {
     expect(result).not.toContain('@');
     expect(result).not.toContain('!!!');
   });
+
+  test('extractNumber returns null when no digits are present', () => {
+    const result = preprocessor.extractNumber('no digits here');
+    expect(result).toBeNull();
+  });
 });
