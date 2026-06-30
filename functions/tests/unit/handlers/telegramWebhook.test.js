@@ -246,7 +246,7 @@ describe('TelegramWebhook Handler', () => {
 
     expect(telegramService.sendMessage).toHaveBeenCalledWith(
       12345,
-      expect.stringContaining('not registered')
+      expect.stringContaining('inactive')
     );
   });
 
@@ -273,6 +273,33 @@ describe('TelegramWebhook Handler', () => {
     expect(telegramService.sendMessage).toHaveBeenCalledWith(
       12345,
       expect.stringContaining('failed')
+    );
+  });
+
+  test('handles generic error on sales message processing', async () => {
+    const mockReq = {
+      body: {
+        message: {
+          chat: { id: 12345 },
+          from: { id: '123' },
+          text: 'sold 5 apples for $10',
+          date: 1234567890,
+        },
+      },
+    };
+    const mockRes = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+    };
+
+    tenantResolver.resolveAgent.mockRejectedValue(new Error('UNKNOWN_DB_ERROR'));
+    telegramService.sendMessage.mockResolvedValue();
+
+    await telegramWebhook(mockReq, mockRes);
+
+    expect(telegramService.sendMessage).toHaveBeenCalledWith(
+      12345,
+      expect.stringContaining('Failed to process your message')
     );
   });
 });
