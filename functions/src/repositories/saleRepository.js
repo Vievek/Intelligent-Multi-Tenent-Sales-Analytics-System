@@ -1,14 +1,22 @@
 const admin = require('firebase-admin');
+const { FieldValue } = require('firebase-admin/firestore');
 const logger = require('../utils/logger');
 
 class SaleRepository {
   constructor() {
-    this.db = admin.firestore();
+    this._db = null;
+  }
+
+  get db() {
+    if (!this._db) {
+      this._db = admin.firestore();
+    }
+    return this._db;
   }
 
   async create(tenantId, saleData) {
     const docRef = this.db.collection(`tenants/${tenantId}/sales`).doc();
-    const now = admin.firestore.FieldValue.serverTimestamp();
+    const now = FieldValue.serverTimestamp();
     
     const docData = {
       ...saleData,
@@ -21,6 +29,42 @@ class SaleRepository {
     await docRef.set(docData);
     logger.debug('Sale created', { tenantId, saleId: docRef.id });
     return docRef.id;
+  }
+
+  /**
+   * Creates a sale at a pre-determined document ID (idempotent).
+   * If the document already exists, returns { id, isDuplicate: true } without writing.
+   */
+  async createWithId(tenantId, docId, saleData) {
+    const docRef = this.db.collection(`tenants/${tenantId}/sales`).doc(docId);
+    const now = FieldValue.serverTimestamp();
+
+    const docData = {
+      ...saleData,
+      tenantId,
+      totalValue: saleData.quantity * saleData.price,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    let isDuplicate = false;
+
+    await this.db.runTransaction(async (tx) => {
+      const snap = await tx.get(docRef);
+      if (snap.exists) {
+        isDuplicate = true;
+        return;
+      }
+      tx.set(docRef, docData);
+    });
+
+    if (isDuplicate) {
+      logger.warn('Duplicate sale detected, skipping write', { tenantId, docId });
+      return { id: docId, isDuplicate: true };
+    }
+
+    logger.debug('Sale created with deterministic ID', { tenantId, saleId: docId });
+    return { id: docId, isDuplicate: false };
   }
 
   async findById(tenantId, saleId) {
