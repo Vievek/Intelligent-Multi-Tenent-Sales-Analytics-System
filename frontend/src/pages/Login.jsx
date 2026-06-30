@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { signIn } from '../services/firebase';
+import { Activity, Lock, Mail, Loader2 } from 'lucide-react';
 
 export default function Login() {
   const { user } = useAuth();
@@ -31,47 +32,66 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-white p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-surface-950 bg-mesh relative overflow-hidden p-4">
+      {/* Decorative Orbs */}
+      <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-primary-600/10 rounded-full blur-[100px] animate-float" />
+      <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-accent-600/10 rounded-full blur-[100px] animate-float-delayed" />
+
+      <div className="w-full max-w-md relative z-10 animate-slide-up">
+        {/* Logo */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-primary-700">RMET Sales Analytics</h1>
-          <p className="text-gray-500 mt-2">Sign in to your account</p>
+          <div className="inline-flex w-12 h-12 rounded-2xl bg-gradient-to-br from-primary-500 to-accent-500 items-center justify-center shadow-glow mb-4">
+            <Activity className="w-6 h-6 text-white" />
+          </div>
+          <h1 className="text-3xl font-extrabold text-white tracking-tight">
+            RMET Analytics
+          </h1>
+          <p className="text-slate-400 text-sm mt-2">
+            Intelligent Multi-Tenant Sales Platform
+          </p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Form Card */}
+        <div className="card-glass border-white/10 relative">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="email" className="input-label">
                 Email Address
               </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition"
-                placeholder="admin@example.com"
-                required
-              />
+              <div className="relative">
+                <Mail className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="input pl-10"
+                  placeholder="admin@example.com"
+                  required
+                />
+              </div>
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="password" className="input-label">
                 Password
               </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition"
-                placeholder="••••••••"
-                required
-              />
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="input pl-10"
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
             </div>
 
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+              <div className="alert-error animate-fade-in">
                 {error}
               </div>
             )}
@@ -79,15 +99,24 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full btn-primary py-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full btn-primary py-3.5 text-sm justify-center shadow-glow-sm hover:shadow-glow"
             >
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Signing In...
+                </>
+              ) : (
+                'Sign In'
+              )}
             </button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-gray-500">
-            <p>Demo credentials:</p>
-            <p className="text-xs">admin@rmet.com / password123</p>
+          <div className="mt-8 pt-6 border-t border-white/5 text-center">
+            <p className="text-xs text-slate-500 mb-2">Demo Credentials</p>
+            <div className="inline-block px-3 py-1.5 rounded-lg bg-white/3 border border-white/5 font-mono text-[11px] text-slate-400">
+              admin@rmet.com / password123
+            </div>
           </div>
         </div>
       </div>
