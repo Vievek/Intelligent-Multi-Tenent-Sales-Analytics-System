@@ -5,15 +5,22 @@ import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
 import TenantDashboard from './pages/TenantDashboard';
 import TenantManagement from './pages/TenantManagement';
+import AgentManagement from './pages/AgentManagement';
+import SalesManagement from './pages/SalesManagement';
+import PendingReviewsPage from './pages/PendingReviewsPage';
 import NotFound from './pages/NotFound';
+import { Loader2 } from 'lucide-react';
 
 function PrivateRoute({ children, requiredRole }) {
   const { user, loading } = useAuth();
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-500">Loading...</div>
+      <div className="min-h-screen bg-surface-950 flex flex-col items-center justify-center bg-mesh">
+        <Loader2 className="w-10 h-10 text-primary-500 animate-spin mb-4" />
+        <div className="text-slate-400 text-sm font-medium tracking-wide">
+          Syncing secure workspace...
+        </div>
       </div>
     );
   }
@@ -52,10 +59,34 @@ function App() {
             }
           />
           <Route
+            path="/agents"
+            element={
+              <PrivateRoute>
+                <AgentManagement />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/sales"
+            element={
+              <PrivateRoute>
+                <SalesManagement />
+              </PrivateRoute>
+            }
+          />
+          <Route
             path="/dashboard"
             element={
               <PrivateRoute>
                 <TenantDashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/pending-reviews"
+            element={
+              <PrivateRoute>
+                <PendingReviewsPage />
               </PrivateRoute>
             }
           />
