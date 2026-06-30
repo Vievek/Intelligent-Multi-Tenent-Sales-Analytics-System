@@ -14,7 +14,9 @@ const saleSchema = z.object({
     .max(100000000, 'Price too large'),
   
   date: z.union([
-    z.string().or(z.date()).or(z.timestamp())
+    z.string(),
+    z.date(),
+    z.custom((val) => val && (typeof val.toDate === 'function' || ('_seconds' in val && '_nanoseconds' in val) || ('seconds' in val && 'nanoseconds' in val)))
   ]),
   
   rawMessage: z.string()
@@ -35,6 +37,7 @@ const saleSchema = z.object({
   
   processedAt: z.string().optional(),
   pubsubMessageId: z.string().nullable().optional(),
+  dedupKey: z.string().nullable().optional(),
 }).strict();
 
 const createTenantSchema = z.object({
