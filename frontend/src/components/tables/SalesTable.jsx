@@ -1,95 +1,89 @@
-import React, { useState } from 'react';
-import { formatDate, formatCurrency, getConfidenceColor, getConfidenceLabel, getExtractionMethodLabel, truncateText } from '../../utils/formatters';
+import React from 'react';
+import { Sparkles, Cpu, AlertTriangle } from 'lucide-react';
+import { formatDate, formatCurrency } from '../../utils/formatters';
 
-const SalesTable = ({ sales, loading }) => {
-  const [filter, setFilter] = useState('');
-
+export default function SalesTable({ sales = [], loading }) {
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-8 text-gray-400 text-sm">
-        Loading sales...
+      <div className="space-y-4">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="h-10 skeleton rounded-lg" />
+        ))}
       </div>
     );
   }
 
-  if (!sales || sales.length === 0) {
+  if (sales.length === 0) {
     return (
-      <div className="flex items-center justify-center py-8 text-gray-400 text-sm">
-        No sales recorded yet
+      <div className="flex flex-col items-center justify-center py-10 text-slate-500">
+        <span className="text-3xl mb-2">🛒</span>
+        <p className="text-sm">No sales records found</p>
       </div>
     );
   }
-
-  const filteredSales = filter
-    ? sales.filter(s =>
-        (s.product || '').toLowerCase().includes(filter.toLowerCase()) ||
-        (s.agentId || '').toLowerCase().includes(filter.toLowerCase())
-      )
-    : sales;
-
-  const displayedSales = filteredSales.slice(0, 50);
 
   return (
-    <div>
-      <div className="mb-3">
-        <input
-          type="text"
-          placeholder="Filter by product or agent..."
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition"
-        />
-      </div>
+    <div className="table-container no-scrollbar">
+      <table className="table">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Qty</th>
+            <th>Unit Price</th>
+            <th>Total Value</th>
+            <th>Agent</th>
+            <th>Confidence</th>
+            <th>Method</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sales.map((sale) => {
+            const hasHigh = sale.confidence === 'HIGH';
+            const hasMedium = sale.confidence === 'MEDIUM';
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-200">
-              <th className="text-left py-3 px-2 font-medium text-gray-500">Date</th>
-              <th className="text-left py-3 px-2 font-medium text-gray-500">Product</th>
-              <th className="text-right py-3 px-2 font-medium text-gray-500">Qty</th>
-              <th className="text-right py-3 px-2 font-medium text-gray-500">Unit Price</th>
-              <th className="text-right py-3 px-2 font-medium text-gray-500">Total</th>
-              <th className="text-center py-3 px-2 font-medium text-gray-500">Confidence</th>
-              <th className="text-center py-3 px-2 font-medium text-gray-500 hidden md:table-cell">Method</th>
-            </tr>
-          </thead>
-          <tbody>
-            {displayedSales.map((sale) => (
-              <tr key={sale.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
-                <td className="py-2 px-2 text-gray-600 whitespace-nowrap">
-                  {formatDate(sale.date)}
+            return (
+              <tr key={sale.id}>
+                <td className="font-semibold text-white truncate max-w-[150px]" title={sale.product}>
+                  {sale.product}
                 </td>
-                <td className="py-2 px-2 text-gray-800 font-medium">
-                  {truncateText(sale.product || 'Unknown', 20)}
-                </td>
-                <td className="py-2 px-2 text-right text-gray-600">
-                  {sale.quantity || 0}
-                </td>
-                <td className="py-2 px-2 text-right text-gray-600">
-                  {formatCurrency(sale.price)}
-                </td>
-                <td className="py-2 px-2 text-right text-gray-800 font-medium">
+                <td className="tabular-nums">{sale.quantity}</td>
+                <td className="tabular-nums">{formatCurrency(sale.price)}</td>
+                <td className="font-bold text-white tabular-nums">
                   {formatCurrency(sale.totalValue || sale.quantity * sale.price)}
                 </td>
-                <td className="py-2 px-2 text-center">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getConfidenceColor(sale.confidence)}`}>
-                    {getConfidenceLabel(sale.confidence)}
+                <td className="font-mono text-xs text-slate-400">
+                  Agent-{sale.agentId ? String(sale.agentId).slice(-4) : '????'}
+                </td>
+                <td>
+                  <span className={`badge ${
+                    hasHigh ? 'badge-success' : hasMedium ? 'badge-warning' : 'badge-danger'
+                  }`}>
+                    {sale.confidence || 'LOW'}
                   </span>
                 </td>
-                <td className="py-2 px-2 text-center text-gray-500 text-xs hidden md:table-cell">
-                  {getExtractionMethodLabel(sale.extractionMethod)}
+                <td>
+                  <span className={`badge ${
+                    sale.extractionMethod === 'huggingface' ? 'badge-primary' : 'badge-accent'
+                  }`}>
+                    <span className="mr-1">
+                      {sale.extractionMethod === 'huggingface' ? (
+                        <Cpu className="w-3 h-3 inline" />
+                      ) : (
+                        <Sparkles className="w-3 h-3 inline" />
+                      )}
+                    </span>
+                    {sale.extractionMethod === 'huggingface' ? 'BERT' : 'Gemini'}
+                  </span>
+                </td>
+                <td className="text-xs text-slate-400 whitespace-nowrap">
+                  {formatDate(sale.date?.toDate ? sale.date.toDate() : sale.date)}
                 </td>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        {filteredSales.length > 50 && (
-          <p className="text-xs text-gray-400 mt-3">Showing 50 of {filteredSales.length} sales</p>
-        )}
-      </div>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
-};
-
-export default SalesTable;
+}
