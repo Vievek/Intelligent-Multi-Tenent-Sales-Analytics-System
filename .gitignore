@@ -46,3 +46,7 @@ frontend/.vitest/
 dist/
 build/
 *.tsbuildinfo
+
+# AI Agent Configuration & Skills
+.agents/
+skills-lock.json
