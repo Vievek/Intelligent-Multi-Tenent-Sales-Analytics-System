@@ -8,14 +8,16 @@ export function useSales(options = {}) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const { startDate, endDate, agentId, product, limit: limitCount = 100 } = options;
+  // tenantId can be overridden by admin to inspect any tenant's sales
+  const { startDate, endDate, agentId, product, limit: limitCount = 100, tenantId: tenantIdOverride } = options;
 
   const buildQuery = useCallback(() => {
-    if (!user || !user.tenantId) {
+    const effectiveTenantId = tenantIdOverride || user?.tenantId;
+    if (!effectiveTenantId) {
       return null;
     }
 
-    const salesRef = collection(db, 'tenants', user.tenantId, 'sales');
+    const salesRef = collection(db, 'tenants', effectiveTenantId, 'sales');
     let constraints = [orderBy('date', 'desc')];
 
     if (startDate) {
@@ -32,10 +34,11 @@ export function useSales(options = {}) {
     }
 
     return query(salesRef, ...constraints);
-  }, [user, startDate, endDate, agentId, product]);
+  }, [user, tenantIdOverride, startDate, endDate, agentId, product]);
 
   useEffect(() => {
-    if (!user || !user.tenantId) {
+    const effectiveTenantId = tenantIdOverride || user?.tenantId;
+    if (!effectiveTenantId) {
       setLoading(false);
       return;
     }
@@ -143,6 +146,74 @@ export function useSales(options = {}) {
     setSales(results.slice(0, limitCount));
   }, [buildQuery, limitCount, user]);
 
+  const createSale = useCallback(async (saleData) => {
+    const effectiveTenantId = tenantIdOverride || user?.tenantId;
+    if (!effectiveTenantId) throw new Error('No tenant ID context');
+
+    const salesRef = collection(db, 'tenants', effectiveTenantId, 'sales');
+    const docRef = doc(salesRef);
+    
+    const quantity = Number(saleData.quantity) || 1;
+    const price = Number(saleData.price) || 0;
+    const totalValue = quantity * price;
+
+    const newSale = {
+      product: saleData.product,
+      quantity,
+      price,
+      totalValue,
+      date: saleData.date ? new Date(saleData.date).toISOString() : new Date().toISOString(),
+      rawMessage: saleData.rawMessage || `Manual sale: ${quantity} ${saleData.product} for $${totalValue}`,
+      agentId: saleData.agentId || 'manual',
+      tenantId: effectiveTenantId,
+      confidence: saleData.confidence || 'HIGH',
+      extractionMethod: saleData.extractionMethod || 'manual',
+      processedAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+    };
+
+    await setDoc(docRef, newSale);
+    return { id: docRef.id, ...newSale };
+  }, [user, tenantIdOverride]);
+
+  const updateSale = useCallback(async (saleId, saleData) => {
+    const effectiveTenantId = tenantIdOverride || user?.tenantId;
+    if (!effectiveTenantId) throw new Error('No tenant ID context');
+
+    const docRef = doc(db, 'tenants', effectiveTenantId, 'sales', saleId);
+    
+    const quantity = Number(saleData.quantity);
+    const price = Number(saleData.price);
+    const updateData = {
+      ...saleData,
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (!isNaN(quantity)) updateData.quantity = quantity;
+    if (!isNaN(price)) updateData.price = price;
+    if (!isNaN(quantity) && !isNaN(price)) {
+      updateData.totalValue = quantity * price;
+    } else if (!isNaN(quantity) || !isNaN(price)) {
+      const snap = await getDoc(docRef);
+      const cur = snap.data();
+      const q = !isNaN(quantity) ? quantity : (cur.quantity || 0);
+      const p = !isNaN(price) ? price : (cur.price || 0);
+      updateData.totalValue = q * p;
+    }
+
+    await updateDoc(docRef, updateData);
+    const updatedSnap = await getDoc(docRef);
+    return { id: updatedSnap.id, ...updatedSnap.data() };
+  }, [user, tenantIdOverride]);
+
+  const deleteSale = useCallback(async (saleId) => {
+    const effectiveTenantId = tenantIdOverride || user?.tenantId;
+    if (!effectiveTenantId) throw new Error('No tenant ID context');
+
+    const docRef = doc(db, 'tenants', effectiveTenantId, 'sales', saleId);
+    await deleteDoc(docRef);
+  }, [user, tenantIdOverride]);
+
   return {
     sales,
     loading,
@@ -151,6 +222,9 @@ export function useSales(options = {}) {
     getStats,
     getTopProducts,
     getSalesByDate,
+    createSale,
+    updateSale,
+    deleteSale,
   };
 }
 
