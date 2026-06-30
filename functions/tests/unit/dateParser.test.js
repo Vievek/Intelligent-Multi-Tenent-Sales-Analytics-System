@@ -1,4 +1,4 @@
-const { dateParser } = require('../../../src/utils/dateParser');
+const { dateParser } = require('../../src/utils/dateParser');
 
 describe('DateParser', () => {
   test('extracts today date from message', () => {
@@ -95,5 +95,30 @@ describe('DateParser', () => {
         expect(result.getFullYear()).toBe(2024);
       }
     }
+  });
+
+  test('extracts date from DD/MM/YY format (year < 100)', () => {
+    const result = dateParser.extractDate('sold 5 apples on 15/12/24', 1234567890);
+    expect(result.getFullYear()).toBe(2024);
+  });
+
+  test('extractDate returns fallback timestamp for text without matching date patterns', () => {
+    // No date patterns match this text, so fallback timestamp is used
+    const result = dateParser.extractDate('sold some items at market', 1734567890);
+    const expected = new Date(1734567890 * 1000);
+    expect(result.getTime()).toBe(expected.getTime());
+  });
+
+  test('extractDate returns current date when fallback timestamp is invalid', () => {
+    const result = dateParser.extractDate('no date in text', 'invalid-timestamp');
+    const now = new Date();
+    expect(result.getDate()).toBe(now.getDate());
+  });
+
+  test('formatDate handles null/undefined and invalid dates', () => {
+    expect(dateParser.formatDate(null)).toBeNull();
+    expect(dateParser.formatDate('invalid-date')).toBeNull();
+    // Test with non-Date string that can be parsed
+    expect(dateParser.formatDate('2024-12-15')).toBe('2024-12-15');
   });
 });
