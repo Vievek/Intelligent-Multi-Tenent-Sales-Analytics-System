@@ -1,14 +1,22 @@
 const admin = require('firebase-admin');
+const { FieldValue } = require('firebase-admin/firestore');
 const logger = require('../utils/logger');
 
 class TenantRepository {
   constructor() {
-    this.db = admin.firestore();
+    this._db = null;
+  }
+
+  get db() {
+    if (!this._db) {
+      this._db = admin.firestore();
+    }
+    return this._db;
   }
 
   async create(data) {
     const docRef = this.db.collection('tenants').doc();
-    const now = admin.firestore.FieldValue.serverTimestamp();
+    const now = FieldValue.serverTimestamp();
     
     const docData = {
       ...data,
@@ -55,7 +63,7 @@ class TenantRepository {
   }
 
   async update(tenantId, data) {
-    const now = admin.firestore.FieldValue.serverTimestamp();
+    const now = FieldValue.serverTimestamp();
     const docRef = this.db.collection('tenants').doc(tenantId);
     
     await docRef.update({
