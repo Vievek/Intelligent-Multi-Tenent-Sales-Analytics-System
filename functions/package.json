@@ -17,8 +17,9 @@
     "test:e2e": "jest tests/e2e"
   },
   "dependencies": {
+    "@google-cloud/bigquery": "^7.9.4",
     "@google-cloud/pubsub": "^4.0.0",
-    "@google/generative-ai": "^0.21.0",
+    "@google/genai": "^2.10.0",
     "@huggingface/inference": "^3.0.0",
     "axios": "^1.0.0",
     "date-fns": "^3.0.0",
