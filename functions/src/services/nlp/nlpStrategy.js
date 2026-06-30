@@ -2,6 +2,7 @@ const { huggingfaceNLP } = require('./huggingfaceNLP');
 const { geminiNLP } = require('./geminiNLP');
 const { preprocessor } = require('./preprocessor');
 const { confidenceScorer } = require('./confidenceScorer');
+const { toTitleCase } = require('../productNormalizer');
 const logger = require('../../utils/logger');
 
 class NLPStrategy {
@@ -46,8 +47,9 @@ class NLPStrategy {
   }
 
   normalizeResult(result, method) {
+    const rawProduct = result.product || 'unknown';
     return {
-      product: result.product || 'unknown',
+      product: rawProduct !== 'unknown' ? toTitleCase(rawProduct) : 'unknown',
       quantity: Math.max(1, parseFloat(result.quantity) || 1),
       price: Math.max(0.01, parseFloat(result.price) || 0.01),
       confidence: result.confidence || 'LOW',
