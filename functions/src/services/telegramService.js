@@ -3,16 +3,28 @@ const logger = require('../utils/logger');
 
 class TelegramService {
   constructor() {
-    const token = process.env.TELEGRAM_BOT_TOKEN;
-    if (!token) {
-      throw new Error('TELEGRAM_BOT_TOKEN not set');
+    this._bot = null;
+  }
+
+  get bot() {
+    if (!this._bot) {
+      const token = process.env.TELEGRAM_BOT_TOKEN;
+      if (!token) {
+        throw new Error('TELEGRAM_BOT_TOKEN not set');
+      }
+      this._bot = new TelegramBot(token, { polling: false });
     }
-    this.bot = new TelegramBot(token, { polling: false });
+    return this._bot;
   }
 
   async sendMessage(chatId, text) {
     try {
-      await this.bot.sendMessage(chatId, text, { parse_mode: 'Markdown' });
+      if (process.env.FUNCTIONS_EMULATOR === 'true') {
+        logger.info(`[EMULATOR] Simulating Telegram message to chat ${chatId}: ${text}`);
+        return;
+      }
+      const botClient = this.bot;
+      await botClient.sendMessage(chatId, text, { parse_mode: 'Markdown' });
     } catch (error) {
       logger.error('Failed to send Telegram message:', error);
       throw error;
