@@ -1,59 +1,83 @@
 import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { formatCurrency, truncateText } from '../../utils/formatters';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
+} from 'recharts';
 
-const COLORS = ['#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e', '#fb7185', '#f59e0b', '#10b981'];
+const COLORS = ['#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e'];
 
-const TopProductsChart = ({ data }) => {
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-surface-800 border border-white/10 rounded-xl px-4 py-3 shadow-card-dark">
+        <p className="text-xs text-slate-400 mb-1">{label}</p>
+        <p className="text-sm font-bold text-white">
+          Revenue: ${payload[0]?.value?.toLocaleString() || 0}
+        </p>
+        {payload[1] && (
+          <p className="text-xs text-primary-400 mt-0.5">
+            Qty: {payload[1]?.value}
+          </p>
+        )}
+      </div>
+    );
+  }
+  return null;
+};
+
+export default function TopProductsChart({ data = [] }) {
   if (!data || data.length === 0) {
     return (
-      <div className="h-64 flex items-center justify-center text-gray-400 text-sm">
-        No product data available
+      <div className="flex items-center justify-center h-48 text-slate-600">
+        <div className="text-center">
+          <div className="text-4xl mb-2">🏆</div>
+          <p className="text-sm">No products yet</p>
+        </div>
       </div>
     );
   }
 
-  const chartData = data.map(item => ({
-    ...item,
-    product: truncateText(item.product || 'Unknown', 15),
-    revenue: item.totalRevenue || 0,
-  })).sort((a, b) => b.revenue - a.revenue);
-
-  const CustomTooltip = ({ active, payload, label }) => {
-    if (!active || !payload || payload.length === 0) return null;
-    const data = payload[0]?.payload;
-    if (!data) return null;
-    return (
-      <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200 text-sm">
-        <p className="font-medium text-gray-700">{data.product}</p>
-        <p className="text-gray-600">Revenue: {formatCurrency(data.revenue)}</p>
-        <p className="text-gray-600">Quantity: {data.totalQuantity || 0}</p>
-        <p className="text-gray-600">Sales: {data.count || 0}</p>
-      </div>
-    );
-  };
-
-  const formatYAxis = (value) => {
-    if (value >= 1000000) return `${value / 1000000}M`;
-    if (value >= 1000) return `${value / 1000}K`;
-    return value;
-  };
+  const top5 = data.slice(0, 5).map(d => ({
+    name: d.product || d.name || 'Unknown',
+    revenue: d.totalRevenue || d.revenue || 0,
+    quantity: d.totalQuantity || d.quantity || 0,
+  }));
 
   return (
-    <ResponsiveContainer width="100%" height={250}>
-      <BarChart data={chartData} layout="vertical" margin={{ top: 5, right: 10, left: 40, bottom: 5 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
-        <XAxis type="number" stroke="#9ca3af" fontSize={11} tickFormatter={formatYAxis} />
-        <YAxis type="category" dataKey="product" stroke="#9ca3af" fontSize={11} width={80} />
-        <Tooltip content={<CustomTooltip />} />
-        <Bar dataKey="revenue" radius={[0, 4, 4, 0]}>
-          {chartData.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-          ))}
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
+    <div className="h-52">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={top5} layout="vertical" margin={{ top: 0, right: 5, left: 10, bottom: 0 }}>
+          <defs>
+            {COLORS.map((color, i) => (
+              <linearGradient key={i} id={`barGrad${i}`} x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor={color} stopOpacity={0.8} />
+                <stop offset="100%" stopColor={color} stopOpacity={0.4} />
+              </linearGradient>
+            ))}
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" horizontal={false} />
+          <XAxis
+            type="number"
+            tick={{ fontSize: 10, fill: '#64748b' }}
+            tickLine={false}
+            axisLine={false}
+            tickFormatter={(v) => `$${v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v}`}
+          />
+          <YAxis
+            type="category"
+            dataKey="name"
+            tick={{ fontSize: 11, fill: '#94a3b8' }}
+            tickLine={false}
+            axisLine={false}
+            width={70}
+          />
+          <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+          <Bar dataKey="revenue" radius={[0, 6, 6, 0]} maxBarSize={20}>
+            {top5.map((_, index) => (
+              <Cell key={index} fill={`url(#barGrad${index % COLORS.length})`} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
   );
-};
-
-export default TopProductsChart;
+}
