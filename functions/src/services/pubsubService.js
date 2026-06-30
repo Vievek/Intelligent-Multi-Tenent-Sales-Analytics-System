@@ -3,9 +3,17 @@ const logger = require('../utils/logger');
 
 class PubSubService {
   constructor() {
-    this.client = new PubSub();
+    this._client = null;
     this.topicName = process.env.PUBSUB_TOPIC || 'sales-messages';
     this.deadLetterTopic = process.env.PUBSUB_DEAD_LETTER || 'sales-messages-dlq';
+  }
+
+  // Lazy getter — resolved at call time so tests can stub PubSub.prototype before use
+  get client() {
+    if (!this._client) {
+      this._client = new PubSub();
+    }
+    return this._client;
   }
 
   async publish(messageData) {
@@ -15,12 +23,12 @@ class PubSubService {
       logger.debug('Message published', { messageId });
       return messageId;
     } catch (error) {
-      logger.error('Failed to publish message:', error);
+      logger.error('Failed to publish message:', error.message || error);
       throw error;
     }
   }
 
-  async publishWithRetry(messageData, maxRetries = 3) {
+  async publishWithRetry(messageData, maxRetries = 3, baseDelay = 1000) {
     let lastError;
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -29,11 +37,12 @@ class PubSubService {
         lastError = error;
         logger.warn(`Publish attempt ${attempt} failed`, { error: error.message });
         if (attempt < maxRetries) {
-          await this.sleep(1000 * attempt);
+          await this.sleep(baseDelay * attempt);
         }
       }
     }
-    throw new Error(`Failed to publish after ${maxRetries} attempts: ${lastError.message}`);
+    logger.error('Failed to publish message:', lastError.message || lastError);
+    throw lastError;
   }
 
   async createTopic() {
@@ -68,7 +77,7 @@ class PubSubService {
   async subscribe(topicName, subscriptionName, callback) {
     const topic = this.client.topic(topicName);
     const [subscription] = await topic.subscription(subscriptionName).get();
-    
+
     subscription.on('message', (message) => {
       try {
         const data = JSON.parse(message.data.toString());
@@ -88,7 +97,7 @@ class PubSubService {
   }
 
   sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
 
