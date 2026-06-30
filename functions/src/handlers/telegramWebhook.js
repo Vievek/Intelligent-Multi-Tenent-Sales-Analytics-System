@@ -1,5 +1,6 @@
 const TelegramBot = require('node-telegram-bot-api');
 const admin = require('firebase-admin');
+const { FieldValue } = require('firebase-admin/firestore');
 const { PubSub } = require('@google-cloud/pubsub');
 const { tenantResolver } = require('../services/tenantResolver');
 const { telegramService } = require('../services/telegramService');
@@ -67,12 +68,18 @@ async function handleSalesMessage(chatId, telegramUserId, text, timestamp) {
   try {
     const resolution = await tenantResolver.resolveAgent(telegramUserId);
 
+    // Build a deterministic dedup key from user + telegram message date + text.
+    // Telegram's message.date is a unix timestamp (integer seconds) — identical
+    // for duplicated deliveries of the same message.
+    const dedupKey = `${telegramUserId}:${timestamp || 0}:${text}`;
+
     const messageData = {
       telegramUserId,
       tenantId: resolution.tenantId,
       agentId: resolution.agentId,
       text,
       timestamp,
+      dedupKey,
       receivedAt: new Date().toISOString(),
     };
 
@@ -113,7 +120,7 @@ async function logMessage(telegramUserId, tenantId, text, status, messageId) {
     rawMessage: text,
     status,
     messageId: messageId || null,
-    receivedAt: admin.firestore.FieldValue.serverTimestamp(),
+    receivedAt: FieldValue.serverTimestamp(),
   });
 }
 
