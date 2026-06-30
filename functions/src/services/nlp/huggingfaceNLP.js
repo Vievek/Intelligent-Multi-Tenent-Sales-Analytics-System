@@ -4,22 +4,30 @@ const logger = require('../../utils/logger');
 
 class HuggingFaceNLP {
   constructor() {
-    const token = process.env.HUGGINGFACE_TOKEN;
-    if (!token) {
-      logger.warn('HUGGINGFACE_TOKEN not set, HF extraction will fail');
-    }
-    this.client = token ? new HfInference(token) : null;
+    this.client = null;
     this.model = 'dslim/bert-base-NER';
   }
 
-  async extract(text) {
+  getClient() {
     if (!this.client) {
-      throw new Error('HuggingFace client not initialized');
+      const token = process.env.HUGGINGFACE_TOKEN;
+      if (!token) {
+        throw new Error('HuggingFace client not initialized');
+      }
+      this.client = new HfInference(token);
     }
+    return this.client;
+  }
+
+  async extract(text) {
+    if (!text || text.trim() === '') {
+      throw new Error('Text is required');
+    }
+    const client = this.getClient();
 
     const cleaned = preprocessor.clean(text);
     
-    const result = await this.client.tokenClassification({
+    const result = await client.tokenClassification({
       model: this.model,
       inputs: cleaned,
       parameters: {
@@ -62,9 +70,13 @@ class HuggingFaceNLP {
 
     if (productIndex !== -1) {
       const candidates = [];
+      const stopWords = ['for', 'at', 'each', 'to', 'with', 'from', 'in', 'on', 'by'];
       for (let i = productIndex; i < Math.min(productIndex + 4, words.length); i++) {
         const word = words[i];
         if (!this.isNumber(word) && !this.isPrice(word)) {
+          if (stopWords.includes(word)) {
+            break;
+          }
           candidates.push(word);
         }
       }
@@ -91,14 +103,18 @@ class HuggingFaceNLP {
   }
 
   extractQuantity(entities, text) {
-    const numbers = text.match(/\b(\d+(\.\d+)?)\b/g);
-    if (numbers && numbers.length > 0) {
-      const firstNum = parseFloat(numbers[0]);
-      if (firstNum >= 0.1 && firstNum <= 1000000) {
-        return firstNum;
+    // Find all words and extract the first pure number (which is not part of currency/price)
+    const words = text.toLowerCase().split(/\s+/);
+    for (const word of words) {
+      const match = word.match(/^(\d+(\.\d+)?)$/);
+      if (match) {
+        const num = parseFloat(match[1]);
+        if (num >= 0.1 && num <= 1000000) {
+          return num;
+        }
       }
     }
-    const words = text.toLowerCase().split(' ');
+
     const qtyWords = ['a', 'an'];
     for (const word of qtyWords) {
       const idx = words.indexOf(word);
