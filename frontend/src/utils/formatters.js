@@ -4,10 +4,11 @@ export function formatCurrency(amount, currency = 'USD') {
   if (amount === undefined || amount === null || isNaN(amount)) {
     return '$0.00';
   }
+  const minFractionDigits = amount === 0 || !Number.isInteger(amount) ? 2 : 0;
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: currency,
-    minimumFractionDigits: 0,
+    minimumFractionDigits: minFractionDigits,
     maximumFractionDigits: 2,
   }).format(amount);
 }
@@ -69,7 +70,7 @@ export function getExtractionMethodLabel(method) {
 export function truncateText(text, maxLength = 50) {
   if (!text) return '';
   if (text.length <= maxLength) return text;
-  return text.slice(0, maxLength) + '...';
+  return text.slice(0, maxLength).trimEnd() + '...';
 }
 
 export function getStatusColor(status) {
