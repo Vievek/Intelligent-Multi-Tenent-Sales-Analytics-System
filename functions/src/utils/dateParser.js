@@ -10,8 +10,9 @@ class DateParser {
         return d;
       } },
       { regex: /(\d{1,2})\/(\d{1,2})\/(\d{2,4})/, handler: (match) => {
-        const month = parseInt(match[1]);
-        const day = parseInt(match[2]);
+        // Treat as DD/MM/YYYY (day first, then month — international format)
+        const day = parseInt(match[1]);
+        const month = parseInt(match[2]);
         let year = parseInt(match[3]);
         if (year < 100) year += 2000;
         const d = new Date(year, month - 1, day);
