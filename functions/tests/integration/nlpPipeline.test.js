@@ -25,7 +25,7 @@ describe('NLP Pipeline Integration', () => {
     const confidence = confidenceScorer.score(result);
 
     expect(cleaned).toBeDefined();
-    expect(result.product).toBe('apple');
+    expect(result.product).toBe('Apple');
     expect(result.quantity).toBe(5);
     expect(result.price).toBe(10);
     expect(confidence).toBe('HIGH');
@@ -42,7 +42,7 @@ describe('NLP Pipeline Integration', () => {
     const result = await nlpStrategy.extract(text);
     const confidence = confidenceScorer.score(result);
 
-    expect(result.product).toBe('mango');
+    expect(result.product).toBe('Mango');
     expect(result.quantity).toBe(3);
     expect(result.price).toBe(150);
     expect(confidence).toBe('HIGH');
@@ -66,7 +66,7 @@ describe('NLP Pipeline Integration', () => {
     const confidence = confidenceScorer.score(result);
 
     expect(result.method).toBe('gemini');
-    expect(result.product).toBe('apple');
+    expect(result.product).toBe('Apple');
     expect(confidence).toBe('HIGH');
   });
 
@@ -123,7 +123,7 @@ describe('NLP Pipeline Integration', () => {
       extractionMethod: result.method,
     });
 
-    expect(validated.product).toBe('apple');
+    expect(validated.product).toBe('Apple');
     expect(validated.quantity).toBe(5);
     expect(validated.price).toBe(10);
   });
