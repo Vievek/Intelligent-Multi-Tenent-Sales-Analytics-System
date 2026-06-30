@@ -1,14 +1,22 @@
 const admin = require('firebase-admin');
+const { FieldValue } = require('firebase-admin/firestore');
 const logger = require('../utils/logger');
 
 class AgentRepository {
   constructor() {
-    this.db = admin.firestore();
+    this._db = null;
+  }
+
+  get db() {
+    if (!this._db) {
+      this._db = admin.firestore();
+    }
+    return this._db;
   }
 
   async create(tenantId, agentData) {
     const docRef = this.db.collection(`tenants/${tenantId}/agents`).doc(agentData.telegramUserId);
-    const now = admin.firestore.FieldValue.serverTimestamp();
+    const now = FieldValue.serverTimestamp();
     
     const docData = {
       ...agentData,
@@ -55,7 +63,7 @@ class AgentRepository {
   }
 
   async update(tenantId, agentId, data) {
-    const now = admin.firestore.FieldValue.serverTimestamp();
+    const now = FieldValue.serverTimestamp();
     const docRef = this.db.collection(`tenants/${tenantId}/agents`).doc(agentId);
     
     await docRef.update({
@@ -70,8 +78,8 @@ class AgentRepository {
   async incrementMessageCount(tenantId, agentId) {
     const docRef = this.db.collection(`tenants/${tenantId}/agents`).doc(agentId);
     await docRef.update({
-      messageCount: admin.firestore.FieldValue.increment(1),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      messageCount: FieldValue.increment(1),
+      updatedAt: FieldValue.serverTimestamp(),
     });
   }
 
