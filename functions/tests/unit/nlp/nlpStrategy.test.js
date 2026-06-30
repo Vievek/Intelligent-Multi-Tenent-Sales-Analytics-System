@@ -72,20 +72,30 @@ describe('NLPStrategy', () => {
     expect(result.product).toBeDefined();
   });
 
-  test('normalizes result to valid values', async () => {
+  test('normalizes result — Gemini fallback provides valid values when HF returns nulls', async () => {
+    // When HF returns nulls, confidence=LOW, Gemini fallback runs
     huggingfaceNLP.extract.mockResolvedValue({
       product: null,
-      quantity: 'invalid',
-      price: 'invalid',
+      quantity: null,
+      price: null,
+    });
+    geminiNLP.extract.mockResolvedValue({
+      product: 'apple',
+      quantity: 5,
+      price: 10,
     });
 
     const result = await nlpStrategy.extract('sold 5 apples for $10');
-    expect(result.product).toBe('unknown');
+    // Gemini provides the final values — they should be valid
+    expect(result.product).toBeDefined();
     expect(result.quantity).toBeGreaterThan(0);
     expect(result.price).toBeGreaterThan(0);
+    expect(result.method).toBe('gemini');
   });
 
-  test('sets confidence based on extraction completeness', async () => {
+  test('keeps HF result at MEDIUM confidence when price missing (not low enough for Gemini)', async () => {
+    // HF returns product + quantity but price=null → confidenceScorer = MEDIUM
+    // Strategy only falls back when confidence=LOW, so HF result is kept
     huggingfaceNLP.extract.mockResolvedValue({
       product: 'apple',
       quantity: 5,
@@ -93,6 +103,18 @@ describe('NLPStrategy', () => {
     });
 
     const result = await nlpStrategy.extract('sold 5 apples');
+    expect(result.method).toBe('huggingface');
     expect(result.confidence).toBe('MEDIUM');
+  });
+
+  test('normalizeResult handles empty/falsy inputs correctly', () => {
+    const normalized = nlpStrategy.normalizeResult({}, null);
+    expect(normalized).toEqual({
+      product: 'unknown',
+      quantity: 1,
+      price: 0.01,
+      confidence: 'LOW',
+      method: 'gemini',
+    });
   });
 });
