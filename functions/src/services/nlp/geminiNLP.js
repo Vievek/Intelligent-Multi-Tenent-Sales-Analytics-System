@@ -1,24 +1,32 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { GoogleGenAI } = require('@google/genai');
 const { preprocessor } = require('./preprocessor');
 const logger = require('../../utils/logger');
 
+const MODEL = 'gemini-3.5-flash';
+
 class GeminiNLP {
   constructor() {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      logger.warn('GEMINI_API_KEY not set, Gemini extraction will fail');
+    this.client = null;
+  }
+
+  getClient() {
+    if (!this.client) {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error('Gemini client not initialized: GEMINI_API_KEY is missing');
+      }
+      this.client = new GoogleGenAI({ apiKey });
     }
-    this.client = apiKey ? new GoogleGenerativeAI(apiKey) : null;
-    this.model = 'gemini-1.5-flash';
+    return this.client;
   }
 
   async extract(text) {
-    if (!this.client) {
-      throw new Error('Gemini client not initialized');
+    if (!text || text.trim() === '') {
+      throw new Error('Text is required');
     }
 
+    const ai = this.getClient();
     const cleaned = preprocessor.clean(text);
-    const genModel = this.client.getGenerativeModel({ model: this.model });
 
     const prompt = `Extract sales information from this text. Return ONLY valid JSON with product, quantity, and price fields.
 
@@ -34,17 +42,20 @@ Rules:
 JSON response only, no explanations:`;
 
     try {
-      const result = await genModel.generateContent(prompt);
-      const response = await result.response;
-      const rawText = response.text();
-      
+      const response = await ai.models.generateContent({
+        model: MODEL,
+        contents: prompt,
+      });
+
+      const rawText = response.text;
+
       const jsonMatch = rawText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         throw new Error('No JSON found in response');
       }
 
       const parsed = JSON.parse(jsonMatch[0]);
-      
+
       return {
         product: parsed.product || 'unknown',
         quantity: Math.max(1, parseFloat(parsed.quantity) || 1),
