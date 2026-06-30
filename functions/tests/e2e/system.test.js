@@ -5,7 +5,6 @@ const { saleRepository } = require('../../src/repositories/saleRepository');
 const { nlpStrategy } = require('../../src/services/nlp/nlpStrategy');
 const admin = require('firebase-admin');
 
-jest.mock('firebase-admin');
 jest.mock('../../src/services/nlp/nlpStrategy');
 jest.mock('../../src/services/tenantResolver');
 jest.mock('../../src/repositories/saleRepository');
