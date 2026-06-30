@@ -1,11 +1,20 @@
 const admin = require('firebase-admin');
+const { FieldValue } = require('firebase-admin/firestore');
 const logger = require('../utils/logger');
 
 class TenantResolver {
   constructor() {
-    this.db = admin.firestore();
+    this._db = null; // Lazy — do NOT call admin.firestore() here
     this.cache = new Map();
     this.cacheTTL = 300000;
+  }
+
+  // Lazy getter: only accesses Firestore after admin.initializeApp() has run
+  get db() {
+    if (!this._db) {
+      this._db = admin.firestore();
+    }
+    return this._db;
   }
 
   async resolveAgent(telegramUserId) {
@@ -73,7 +82,7 @@ class TenantResolver {
       telegramUserId,
       chatId,
       status: 'active',
-      registeredAt: admin.firestore.FieldValue.serverTimestamp(),
+      registeredAt: FieldValue.serverTimestamp(),
       messageCount: 0,
     });
 
