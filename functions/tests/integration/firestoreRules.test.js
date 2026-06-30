@@ -60,7 +60,13 @@ describe('Firestore Security Rules', () => {
       set: jest.fn().mockRejectedValue(new Error('Permission denied')),
     };
 
-    admin.firestore().collection().doc = jest.fn().mockReturnValue(mockSaleRef);
+    admin.firestore().collection = jest.fn().mockReturnValue({
+      doc: jest.fn().mockReturnValue({
+        collection: jest.fn().mockReturnValue({
+          doc: jest.fn().mockReturnValue(mockSaleRef)
+        })
+      })
+    });
 
     await expect(
       admin.firestore().collection('tenants').doc('tenant1').collection('sales').doc().set({})
