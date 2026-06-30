@@ -10,38 +10,23 @@
     ],
     "runtime": "nodejs20"
   },
-  "hosting": {
-    "source": "frontend",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
-    "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
-    ]
-  },
-  "functions": [
-    {
-      "name": "receiveTelegramMessage",
-      "entryPoint": "receiveTelegramMessage",
-      "runtime": "nodejs20",
-      "environmentVariables": {
-        "PUBSUB_TOPIC": "sales-messages"
-      }
+  "emulators": {
+    "auth": {
+      "port": 9099
     },
-    {
-      "name": "processSalesMessage",
-      "entryPoint": "processSalesMessage",
-      "runtime": "nodejs20",
-      "eventTrigger": {
-        "eventType": "google.cloud.pubsub.topic.v1.messagePublished",
-        "resource": "projects/${PROJECT_ID}/topics/sales-messages"
-      },
-      "environmentVariables": {}
-    }
-  ]
+    "functions": {
+      "port": 5001
+    },
+    "firestore": {
+      "port": 8090
+    },
+    "pubsub": {
+      "port": 8085
+    },
+    "ui": {
+      "enabled": true,
+      "port": 4000
+    },
+    "singleProjectMode": true
+  }
 }
