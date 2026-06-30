@@ -53,4 +53,46 @@ describe('HuggingFaceNLP', () => {
     const result = await huggingfaceNLP.extract(longText);
     expect(result.product).toBeDefined();
   });
+
+  test('HuggingFaceNLP constructor warning when token is missing', () => {
+    const HuggingFaceClass = huggingfaceNLP.constructor;
+    const originalToken = process.env.HUGGINGFACE_TOKEN;
+    delete process.env.HUGGINGFACE_TOKEN;
+
+    const instance = new HuggingFaceClass();
+    expect(instance.client).toBeNull();
+
+    process.env.HUGGINGFACE_TOKEN = originalToken;
+  });
+
+  test('throws if client is not initialized', async () => {
+    const HuggingFaceClass = huggingfaceNLP.constructor;
+    const instance = new HuggingFaceClass();
+    const originalToken = process.env.HUGGINGFACE_TOKEN;
+    delete process.env.HUGGINGFACE_TOKEN;
+    instance.client = null;
+
+    try {
+      await expect(instance.extract('some text')).rejects.toThrow('HuggingFace client not initialized');
+    } finally {
+      process.env.HUGGINGFACE_TOKEN = originalToken;
+    }
+  });
+
+  test('extractQuantity handles a or an prefix', async () => {
+    const result = await huggingfaceNLP.extract('sold a mango');
+    expect(result.quantity).toBe(1);
+  });
+
+  test('extractPrice parses the last number if pattern matching fails', async () => {
+    // A message with multiple numbers but no explicit currency symbol/word near the last number
+    // e.g. "sold 5 apples 10" -> last number is 10, pattern matches no currency, fallback parses last number
+    const result = await huggingfaceNLP.extract('sold 5 apples 10');
+    expect(result.price).toBe(10);
+  });
+
+  test('findLastPriceIndex with price indicator match', async () => {
+    const result = await huggingfaceNLP.extract('apple 10 dollars');
+    expect(result.product).toBe('apple');
+  });
 });
