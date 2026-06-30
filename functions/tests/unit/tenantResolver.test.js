@@ -4,9 +4,33 @@ const admin = require('firebase-admin');
 jest.mock('firebase-admin');
 
 describe('TenantResolver', () => {
+  let mockDb;
+
   beforeEach(() => {
     jest.clearAllMocks();
     tenantResolver.cache.clear();
+    tenantResolver._db = null;
+
+    // Fresh chainable mock for every test
+    mockDb = {
+      collection: jest.fn().mockReturnThis(),
+      doc: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      get: jest.fn().mockResolvedValue({ empty: true, docs: [] }),
+      set: jest.fn().mockResolvedValue(),
+      update: jest.fn().mockResolvedValue(),
+      delete: jest.fn().mockResolvedValue(),
+      collectionGroup: jest.fn().mockReturnThis(),
+      add: jest.fn().mockResolvedValue({ id: 'newDocId' }),
+    };
+
+    admin.firestore.mockReturnValue(mockDb);
+    admin.firestore.FieldValue = {
+      serverTimestamp: jest.fn().mockReturnValue('timestamp'),
+      increment: jest.fn().mockImplementation((n) => n),
+    };
   });
 
   test('UT-09: resolves registered agent correctly', async () => {
@@ -20,12 +44,11 @@ describe('TenantResolver', () => {
       data: () => ({ name: 'Test Tenant', status: 'active' }),
     };
 
-    admin.firestore().collectionGroup().where().limit().get = jest.fn().mockResolvedValue({
-      empty: false,
-      docs: [mockAgentDoc],
-    });
-
-    admin.firestore().collection().doc().get = jest.fn().mockResolvedValue(mockTenantDoc);
+    // First call: collectionGroup query for agent
+    mockDb.get
+      .mockResolvedValueOnce({ empty: false, docs: [mockAgentDoc] })
+      // Second call: tenant doc fetch
+      .mockResolvedValueOnce(mockTenantDoc);
 
     const result = await tenantResolver.resolveAgent('123');
     expect(result.agentId).toBe('123');
@@ -33,10 +56,7 @@ describe('TenantResolver', () => {
   });
 
   test('UT-10: rejects unregistered agent', async () => {
-    admin.firestore().collectionGroup().where().limit().get = jest.fn().mockResolvedValue({
-      empty: true,
-      docs: [],
-    });
+    mockDb.get.mockResolvedValueOnce({ empty: true, docs: [] });
 
     await expect(tenantResolver.resolveAgent('999')).rejects.toThrow('UNREGISTERED_AGENT');
   });
@@ -52,12 +72,9 @@ describe('TenantResolver', () => {
       data: () => ({ name: 'Test Tenant', status: 'inactive' }),
     };
 
-    admin.firestore().collectionGroup().where().limit().get = jest.fn().mockResolvedValue({
-      empty: false,
-      docs: [mockAgentDoc],
-    });
-
-    admin.firestore().collection().doc().get = jest.fn().mockResolvedValue(mockTenantDoc);
+    mockDb.get
+      .mockResolvedValueOnce({ empty: false, docs: [mockAgentDoc] })
+      .mockResolvedValueOnce(mockTenantDoc);
 
     await expect(tenantResolver.resolveAgent('123')).rejects.toThrow('TENANT_INACTIVE');
   });
@@ -69,17 +86,11 @@ describe('TenantResolver', () => {
       data: () => ({ name: 'Test Tenant', tenantCode: 'TEST123', status: 'active' }),
     };
 
-    admin.firestore().collection().where().where().limit().get = jest.fn().mockResolvedValue({
-      empty: false,
-      docs: [mockTenantDoc],
-    });
-
-    admin.firestore().collection().where().limit().get = jest.fn().mockResolvedValue({
-      empty: true,
-      docs: [],
-    });
-
-    admin.firestore().collection().doc().set = jest.fn().mockResolvedValue();
+    mockDb.get
+      // First call: find tenant by code
+      .mockResolvedValueOnce({ empty: false, docs: [mockTenantDoc] })
+      // Second call: check for duplicate registration
+      .mockResolvedValueOnce({ empty: true, docs: [] });
 
     const result = await tenantResolver.registerAgent('123', 'TEST123', 456);
     expect(result.id).toBe('tenant1');
@@ -87,10 +98,7 @@ describe('TenantResolver', () => {
   });
 
   test('UT-13: rejects invalid tenant code', async () => {
-    admin.firestore().collection().where().where().limit().get = jest.fn().mockResolvedValue({
-      empty: true,
-      docs: [],
-    });
+    mockDb.get.mockResolvedValueOnce({ empty: true, docs: [] });
 
     await expect(tenantResolver.registerAgent('123', 'INVALID', 456)).rejects.toThrow('INVALID_CODE');
   });
@@ -106,16 +114,45 @@ describe('TenantResolver', () => {
       data: () => ({ name: 'Test Tenant', status: 'active' }),
     };
 
-    admin.firestore().collectionGroup().where().limit().get = jest.fn().mockResolvedValue({
-      empty: false,
-      docs: [mockAgentDoc],
-    });
-
-    admin.firestore().collection().doc().get = jest.fn().mockResolvedValue(mockTenantDoc);
+    mockDb.get
+      .mockResolvedValueOnce({ empty: false, docs: [mockAgentDoc] })
+      .mockResolvedValueOnce(mockTenantDoc);
 
     await tenantResolver.resolveAgent('123');
-    await tenantResolver.resolveAgent('123');
+    await tenantResolver.resolveAgent('123'); // should hit cache
 
-    expect(admin.firestore().collectionGroup).toHaveBeenCalledTimes(1);
+    // get() should only have been called twice (for the first resolution)
+    expect(mockDb.get).toHaveBeenCalledTimes(2);
+  });
+
+  test('rejects blocked agent', async () => {
+    const mockAgentDoc = {
+      exists: true,
+      data: () => ({ telegramUserId: '456', status: 'blocked' }),
+      ref: { parent: { parent: { id: 'tenant1' } } },
+    };
+
+    // collectionGroup query returns no active agents (blocked status filtered out)
+    mockDb.get.mockResolvedValueOnce({ empty: true, docs: [] });
+
+    await expect(tenantResolver.resolveAgent('456')).rejects.toThrow('UNREGISTERED_AGENT');
+  });
+
+  test('rejects duplicate registration', async () => {
+    const mockTenantDoc = {
+      exists: true,
+      id: 'tenant1',
+      data: () => ({ name: 'Test Tenant', tenantCode: 'TEST123', status: 'active' }),
+    };
+    const mockExistingAgent = {
+      exists: true,
+      data: () => ({ telegramUserId: '123' }),
+    };
+
+    mockDb.get
+      .mockResolvedValueOnce({ empty: false, docs: [mockTenantDoc] })
+      .mockResolvedValueOnce({ empty: false, docs: [mockExistingAgent] });
+
+    await expect(tenantResolver.registerAgent('123', 'TEST123', 456)).rejects.toThrow('DUPLICATE_REGISTRATION');
   });
 });
