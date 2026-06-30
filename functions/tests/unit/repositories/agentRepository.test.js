@@ -39,6 +39,16 @@ describe('AgentRepository', () => {
     expect(result.telegramUserId).toBe('123');
   });
 
+  test('returns null if agent not found by id', async () => {
+    const mockDoc = {
+      exists: false,
+    };
+    admin.firestore().collection().doc().get = jest.fn().mockResolvedValue(mockDoc);
+
+    const result = await agentRepository.findById('tenant1', 'nonexistent');
+    expect(result).toBeNull();
+  });
+
   test('finds agent by telegram user id', async () => {
     const mockDoc = {
       id: '123',
@@ -73,6 +83,7 @@ describe('AgentRepository', () => {
         { id: '123', data: () => ({ telegramUserId: '123', status: 'active' }) },
         { id: '456', data: () => ({ telegramUserId: '456', status: 'active' }) },
       ],
+      forEach(cb) { this.docs.forEach(cb); },
     };
     admin.firestore().collection().doc().collection().where().get = jest.fn().mockResolvedValue(mockSnapshot);
 
@@ -141,8 +152,9 @@ describe('AgentRepository', () => {
         { data: () => ({ totalValue: 100, quantity: 5 }) },
         { data: () => ({ totalValue: 200, quantity: 10 }) },
       ],
+      forEach(cb) { this.docs.forEach(cb); },
     };
-    admin.firestore().collection().doc().collection().where().get = jest.fn().mockResolvedValue(mockSnapshot);
+    admin.firestore().collection().where().get = jest.fn().mockResolvedValue(mockSnapshot);
 
     const result = await agentRepository.getPerformance('tenant1', '123');
     expect(result.agentId).toBe('123');
