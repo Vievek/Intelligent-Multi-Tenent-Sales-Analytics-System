@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "rmet-sales-analytics"
-  }
+    "default": "sales-analytics-51405",
+    "sales": "sales-analytics-51405"
+  },
+  "targets": {},
+  "etags": {}
 }
