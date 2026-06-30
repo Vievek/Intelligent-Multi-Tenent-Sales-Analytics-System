@@ -59,7 +59,7 @@ describe('StatCard', () => {
   });
 
   it('handles empty value', () => {
-    render(
+    const { container } = render(
       <StatCard
         title="Total Sales"
         value=""
@@ -68,6 +68,9 @@ describe('StatCard', () => {
       />
     );
 
-    expect(screen.getByText('')).toBeDefined();
+    // The value paragraph exists even when empty
+    const valuePara = container.querySelector('p.text-2xl');
+    expect(valuePara).toBeDefined();
+    expect(valuePara.textContent).toBe('');
   });
 });
