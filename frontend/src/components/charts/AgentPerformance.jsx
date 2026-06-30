@@ -1,72 +1,102 @@
-import React, { useMemo } from 'react';
-import { formatCurrency } from '../../utils/formatters';
+import React from 'react';
+import { Trophy, Medal, Award } from 'lucide-react';
 
-const AgentPerformance = ({ sales }) => {
-  const agentStats = useMemo(() => {
-    const map = {};
-    for (const sale of sales) {
-      const key = sale.agentId || 'unknown';
-      if (!map[key]) {
-        map[key] = { agentId: key, count: 0, revenue: 0, quantity: 0 };
-      }
-      map[key].count++;
-      map[key].revenue += sale.totalValue || 0;
-      map[key].quantity += sale.quantity || 0;
-    }
-    return Object.values(map)
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 10);
-  }, [sales]);
+const rankIcons = [
+  <Trophy key={0} className="w-3.5 h-3.5 text-amber-400" />,
+  <Medal key={1} className="w-3.5 h-3.5 text-slate-300" />,
+  <Award key={2} className="w-3.5 h-3.5 text-amber-600" />,
+];
 
-  if (agentStats.length === 0) {
+export default function AgentPerformance({ sales = [], agents = [] }) {
+  if (!sales || sales.length === 0) {
     return (
-      <div className="flex items-center justify-center h-48 text-gray-400 text-sm">
-        No agent data available
+      <div className="flex items-center justify-center h-40 text-slate-600">
+        <div className="text-center">
+          <div className="text-3xl mb-2">👥</div>
+          <p className="text-sm">No agent data yet</p>
+        </div>
       </div>
     );
   }
 
-  const maxRevenue = Math.max(...agentStats.map(a => a.revenue), 1);
+  // Build agentId -> name lookup from agents array
+  const agentNameMap = {};
+  agents.forEach(agent => {
+    if (agent.telegramUserId) agentNameMap[agent.telegramUserId] = agent.name || null;
+    if (agent.id) agentNameMap[agent.id] = agent.name || agentNameMap[agent.id] || null;
+  });
+  const resolveName = (agentId) => agentNameMap[agentId] || `Agent ${agentId.slice(-6)}`;
+
+  // Aggregate by agent
+  const agentMap = {};
+  sales.forEach(sale => {
+    const id = sale.agentId || 'unknown';
+    if (!agentMap[id]) {
+      agentMap[id] = { agentId: id, salesCount: 0, revenue: 0 };
+    }
+    agentMap[id].salesCount++;
+    agentMap[id].revenue += sale.totalValue || sale.price * sale.quantity || 0;
+  });
+
+  const leaderboard = Object.values(agentMap)
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 6);
+
+  const maxRevenue = leaderboard[0]?.revenue || 1;
 
   return (
     <div className="space-y-3">
-      {agentStats.map((agent, index) => {
-        const percentage = Math.min((agent.revenue / maxRevenue) * 100, 100);
-        const rank = index + 1;
-        const medalColors = ['text-yellow-500', 'text-gray-400', 'text-orange-500'];
-        const rankColor = rank <= 3 ? medalColors[rank - 1] : 'text-gray-400';
+      {leaderboard.map((agent, idx) => {
+        const pct = Math.round((agent.revenue / maxRevenue) * 100);
+        const name = resolveName(agent.agentId);
+        const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+        const isTop = idx < 3;
 
         return (
-          <div key={agent.agentId} className="space-y-1">
-            <div className="flex justify-between text-xs">
-              <span className="flex items-center gap-2 text-gray-700 font-medium">
-                <span className={rankColor}>
-                  #{rank}
-                </span>
-                <span className="truncate max-w-[80px]">
-                  Agent {agent.agentId.slice(0, 6)}
-                </span>
-              </span>
-              <span className="text-gray-600">
-                {formatCurrency(agent.revenue)} ({agent.count} sales)
-              </span>
+          <div key={agent.agentId} className="flex items-center gap-3 group">
+            {/* Rank / avatar */}
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+              idx === 0 ? 'bg-amber-500/20 text-amber-400' :
+              idx === 1 ? 'bg-slate-400/15 text-slate-300' :
+              idx === 2 ? 'bg-amber-700/20 text-amber-600' :
+              'bg-white/5 text-slate-500'
+            }`}>
+              {isTop ? rankIcons[idx] : initials}
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${
-                  rank === 1 ? 'bg-yellow-500' :
-                  rank === 2 ? 'bg-gray-400' :
-                  rank === 3 ? 'bg-orange-500' :
-                  'bg-primary-400'
-                }`}
-                style={{ width: `${percentage}%` }}
-              />
+
+            {/* Info + bar */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-medium text-slate-300 truncate" title={name}>
+                  {name}
+                </span>
+                <span className="text-xs font-semibold text-slate-400 ml-2 flex-shrink-0">
+                  {agent.salesCount} sales
+                </span>
+              </div>
+              <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-700 ${
+                    idx === 0 ? 'bg-gradient-to-r from-primary-500 to-accent-500' :
+                    idx === 1 ? 'bg-gradient-to-r from-primary-600 to-primary-400' :
+                    'bg-primary-700/60'
+                  }`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Revenue */}
+            <div className="text-right flex-shrink-0 w-16">
+              <span className="text-xs font-bold text-white">
+                ${agent.revenue >= 1000
+                  ? `${(agent.revenue / 1000).toFixed(1)}k`
+                  : agent.revenue.toFixed(0)}
+              </span>
             </div>
           </div>
         );
       })}
     </div>
   );
-};
-
-export default AgentPerformance;
+}
