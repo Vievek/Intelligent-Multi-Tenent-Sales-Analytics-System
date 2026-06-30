@@ -1,28 +1,31 @@
 import React, { useState } from 'react';
+import { Building2, Mail, Key } from 'lucide-react';
 
 export default function CreateTenantForm({ onSubmit, onCancel }) {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    tenantCode: '',
-    plan: 'basic',
-  });
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [tenantCode, setTenantCode] = useState('');
+  const [plan, setPlan] = useState('basic');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
   const validate = () => {
     const newErrors = {};
-    if (!formData.name.trim()) {
+
+    if (!name.trim()) {
       newErrors.name = 'Business name is required';
     }
-    if (!formData.email.trim()) {
+
+    if (!email.trim()) {
       newErrors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       newErrors.email = 'Invalid email format';
     }
-    if (formData.tenantCode && !/^[A-Z0-9]{4,20}$/i.test(formData.tenantCode)) {
+
+    if (tenantCode && !/^[a-zA-Z0-9]{4,20}$/.test(tenantCode)) {
       newErrors.tenantCode = 'Code must be 4-20 alphanumeric characters';
     }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -33,98 +36,120 @@ export default function CreateTenantForm({ onSubmit, onCancel }) {
 
     setLoading(true);
     try {
-      await onSubmit(formData);
+      await onSubmit({ name, email, tenantCode, plan });
+      setName('');
+      setEmail('');
+      setTenantCode('');
+      setPlan('basic');
+      setErrors({});
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: '' }));
-    }
+  const handleGenerateCode = () => {
+    const randomCode = 'TEN' + Math.random().toString(36).substring(2, 8).toUpperCase();
+    setTenantCode(randomCode);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-          Business Name *
-        </label>
-        <input
-          id="name"
-          name="name"
-          type="text"
-          value={formData.name}
-          onChange={handleChange}
-          className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition ${
-            errors.name ? 'border-red-500' : 'border-gray-300'
-          }`}
-          placeholder="My Business"
-        />
-        {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+    <form onSubmit={handleSubmit} className="space-y-5 animate-slide-up">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label htmlFor="business-name" className="input-label">
+            Business Name
+          </label>
+          <div className="relative">
+            <Building2 className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
+            <input
+              id="business-name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="input pl-10"
+              placeholder="e.g. Acme Corp"
+            />
+          </div>
+          {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+        </div>
+
+        <div>
+          <label htmlFor="business-email" className="input-label">
+            Admin Email Address
+          </label>
+          <div className="relative">
+            <Mail className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
+            <input
+              id="business-email"
+              type="text"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="input pl-10"
+              placeholder="e.g. admin@acme.com"
+            />
+          </div>
+          {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+        </div>
       </div>
 
       <div>
-        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-          Admin Email *
+        <label htmlFor="tenant-code" className="input-label">
+          Tenant Code (Unique identifier for agent registration)
         </label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          value={formData.email}
-          onChange={handleChange}
-          className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition ${
-            errors.email ? 'border-red-500' : 'border-gray-300'
-          }`}
-          placeholder="admin@example.com"
-        />
-        {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
-      </div>
-
-      <div>
-        <label htmlFor="tenantCode" className="block text-sm font-medium text-gray-700 mb-1">
-          Tenant Code (optional)
-        </label>
-        <input
-          id="tenantCode"
-          name="tenantCode"
-          type="text"
-          value={formData.tenantCode}
-          onChange={handleChange}
-          className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition uppercase ${
-            errors.tenantCode ? 'border-red-500' : 'border-gray-300'
-          }`}
-          placeholder="AUTO-GENERATED if empty"
-        />
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Key className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
+            <input
+              id="tenant-code"
+              type="text"
+              value={tenantCode}
+              onChange={(e) => setTenantCode(e.target.value.toUpperCase())}
+              className="input pl-10 font-mono text-primary-300"
+              placeholder="e.g. ACMECORP"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={handleGenerateCode}
+            className="btn-secondary whitespace-nowrap"
+          >
+            Auto Generate
+          </button>
+        </div>
         {errors.tenantCode && <p className="text-red-500 text-sm mt-1">{errors.tenantCode}</p>}
       </div>
 
       <div>
-        <label htmlFor="plan" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="plan" className="input-label">
           Plan
         </label>
         <select
           id="plan"
-          name="plan"
-          value={formData.plan}
-          onChange={handleChange}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition bg-white"
+          value={plan}
+          onChange={(e) => setPlan(e.target.value)}
+          className="input"
         >
           <option value="basic">Basic</option>
-          <option value="pro">Pro</option>
+          <option value="professional">Professional</option>
+          <option value="enterprise">Enterprise</option>
         </select>
       </div>
 
-      <div className="flex gap-3 pt-2">
-        <button type="submit" disabled={loading} className="btn-primary flex-1 disabled:opacity-50">
-          {loading ? 'Creating...' : 'Create Tenant'}
-        </button>
-        <button type="button" onClick={onCancel} className="btn-secondary">
+      <div className="flex justify-end gap-3 pt-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={loading}
+          className="btn-secondary"
+        >
           Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={loading}
+          className="btn-primary"
+        >
+          {loading ? 'Creating...' : 'Create Tenant'}
         </button>
       </div>
     </form>
