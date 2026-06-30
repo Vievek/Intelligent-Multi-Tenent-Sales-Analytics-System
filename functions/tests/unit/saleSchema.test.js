@@ -145,4 +145,43 @@ describe('SaleSchema', () => {
     };
     expect(() => saleSchema.parse(invalidData)).toThrow();
   });
+
+  test('accepts firestore timestamps in date field', () => {
+    const baseData = {
+      product: 'apple',
+      quantity: 5,
+      price: 10,
+      rawMessage: 'sold 5 apples for $10',
+      agentId: '123',
+      tenantId: 'tenant1',
+    };
+
+    // Object with toDate function
+    const dataWithToDate = {
+      ...baseData,
+      date: { toDate: () => new Date() },
+    };
+    expect(saleSchema.parse(dataWithToDate)).toBeDefined();
+
+    // Object with seconds and nanoseconds
+    const dataWithSeconds = {
+      ...baseData,
+      date: { seconds: 1719734567, nanoseconds: 123000 },
+    };
+    expect(saleSchema.parse(dataWithSeconds)).toBeDefined();
+
+    // Object with _seconds and _nanoseconds
+    const dataWithUnderscoreSeconds = {
+      ...baseData,
+      date: { _seconds: 1719734567, _nanoseconds: 123000 },
+    };
+    expect(saleSchema.parse(dataWithUnderscoreSeconds)).toBeDefined();
+
+    // Rejecting object without required keys
+    const dataWithInvalidObject = {
+      ...baseData,
+      date: { invalidKey: 123 },
+    };
+    expect(() => saleSchema.parse(dataWithInvalidObject)).toThrow();
+  });
 });
